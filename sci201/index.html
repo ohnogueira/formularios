@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SCI-201 Briefing do Incidente</title>
+  <meta name="description" content="Preenchimento do Formulário SCI-201 (Briefing do Incidente) com geração de PDF. Funciona sem internet.">
+  <meta name="theme-color" content="#b3261e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="topo-linha">
+      <h1>SCI-201 · Briefing do Incidente<small>Preenchimento do formulário</small></h1>
+      <button class="btn pequeno oculto" id="btn-instalar" type="button">Instalar app</button>
+      <button class="btn pequeno" id="btn-guia" type="button">Guia</button>
+    </div>
+    <nav class="passos" id="passos" aria-label="Etapas do formulário"></nav>
+  </header>
+  <div class="aviso-topo oculto" id="aviso-atualizacao">
+    Nova versão disponível. <button class="btn pequeno" id="btn-atualizar" type="button">Atualizar</button>
+  </div>
+
+  <main id="conteudo">
+    <!-- ===== Etapa 1: Identificação ===== -->
+    <section class="passo" data-passo="identificacao" data-titulo="1. Identificação">
+      <div class="cartao">
+        <h2><span class="num">1</span><span class="titulo">Nome do Incidente</span><button class="ajuda" type="button" data-campo="1" aria-label="Como preencher o campo 1">?</button></h2>
+        <input type="text" data-bind="incidente.nome" aria-label="Nome do Incidente" autocomplete="off">
+      </div>
+      <div class="cartao">
+        <h2><span class="num">2</span><span class="titulo">Número do Incidente</span><button class="ajuda" type="button" data-campo="2" aria-label="Como preencher o campo 2">?</button></h2>
+        <input type="text" data-bind="incidente.numero" aria-label="Número do Incidente" autocomplete="off">
+      </div>
+      <div class="cartao">
+        <h2><span class="num">3</span><span class="titulo">Data/Hora de Início</span><button class="ajuda" type="button" data-campo="3" aria-label="Como preencher o campo 3">?</button></h2>
+        <p class="dica">Data e horário em que se iniciou a confecção deste formulário.</p>
+        <div class="linha-dh">
+          <label class="campo"><span>Data</span><input type="date" data-bind="incidente.data"></label>
+          <label class="campo"><span>Hora</span><input type="time" data-bind="incidente.hora"></label>
+          <button class="btn campo" type="button" data-agora="incidente">Agora</button>
+        </div>
+      </div>
+      <div class="cartao">
+        <h2><span class="num">6</span><span class="titulo">Preparado por</span><button class="ajuda" type="button" data-campo="6" aria-label="Como preencher o campo 6">?</button></h2>
+        <p class="dica">Estes dados aparecem no rodapé de todas as páginas do PDF.</p>
+        <div class="grade g2">
+          <label class="campo"><span>Nome</span><input type="text" data-bind="preparadoPor.nome" autocomplete="name"></label>
+          <label class="campo"><span>Cargo/Função</span><input type="text" data-bind="preparadoPor.cargo" list="lista-cargos" placeholder="Ex.: CI – Comandante do Incidente"></label>
+        </div>
+        <div class="linha-dh">
+          <label class="campo"><span>Data</span><input type="date" data-bind="preparadoPor.data"></label>
+          <label class="campo"><span>Hora</span><input type="time" data-bind="preparadoPor.hora"></label>
+          <button class="btn campo" type="button" data-agora="preparadoPor">Agora</button>
+        </div>
+        <div class="rotulo">Assinatura</div>
+        <div class="assinatura">
+          <canvas class="tela-desenho" id="tela-assinatura" width="900" height="300" aria-label="Área para assinar com o dedo ou o mouse"></canvas>
+          <div class="acoes-linha">
+            <button class="btn pequeno" type="button" id="assinatura-desfazer">Desfazer</button>
+            <button class="btn pequeno perigo" type="button" id="assinatura-limpar">Limpar assinatura</button>
+          </div>
+          <p class="dica">Assine com o dedo (celular) ou com o mouse. Se preferir, deixe em branco e assine no papel depois de imprimir.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Etapa 2: Croquis e situação ===== -->
+    <section class="passo" data-passo="croqui" data-titulo="2. Croquis e situação">
+      <div class="cartao">
+        <h2><span class="num">4</span><span class="titulo">Mapa / Croquis</span><button class="ajuda" type="button" data-campo="4" aria-label="Como preencher o campo 4">?</button></h2>
+        <p class="dica">Incluir esboço, mostrando a área total das operações, o local/área do incidente impactado e ameaçado, outras áreas resultados de sobrevoo, trajetórias, linhas costeiras impactadas ou outros gráficos que retratam o status situacional e a localização geográfica dos recursos designados e/ou em empregos.</p>
+        <div class="acoes-linha" style="margin:0 0 10px">
+          <label class="btn azul">
+            Anexar foto ou imagem
+            <input type="file" accept="image/*" id="croqui-arquivo" class="sr">
+          </label>
+          <button class="btn" type="button" id="croqui-girar">Girar 90°</button>
+          <button class="btn perigo" type="button" id="croqui-remover-imagem">Remover imagem</button>
+        </div>
+        <div class="ferramentas" id="croqui-ferramentas" role="toolbar" aria-label="Ferramentas de desenho">
+          <span class="rotulo" style="margin:0">Desenhar:</span>
+          <button class="cor" type="button" data-cor="#111111" style="background:#111111" aria-label="Preto"></button>
+          <button class="cor" type="button" data-cor="#d32f2f" style="background:#d32f2f" aria-label="Vermelho"></button>
+          <button class="cor" type="button" data-cor="#1565c0" style="background:#1565c0" aria-label="Azul"></button>
+          <button class="cor" type="button" data-cor="#2e7d32" style="background:#2e7d32" aria-label="Verde"></button>
+          <button class="cor" type="button" data-cor="#f9a825" style="background:#f9a825" aria-label="Amarelo"></button>
+          <select id="croqui-espessura" aria-label="Espessura do traço" style="width:auto;min-height:36px;padding:4px 8px">
+            <option value="0.003">Fino</option>
+            <option value="0.006" selected>Médio</option>
+            <option value="0.012">Grosso</option>
+          </select>
+          <button class="btn pequeno" type="button" id="croqui-desfazer">Desfazer</button>
+          <button class="btn pequeno perigo" type="button" id="croqui-limpar">Apagar desenho</button>
+        </div>
+        <div class="moldura-croqui">
+          <canvas class="tela-desenho" id="tela-croqui" width="1400" height="1000" aria-label="Área de desenho do croquis"></canvas>
+          <div class="norte" id="indicador-norte" aria-hidden="true">
+            <svg width="18" height="20" viewBox="0 0 18 20"><path d="M9 1 L16 18 L9 13 L2 18 Z" fill="#111"/></svg>N
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" data-bind="croqui.norte"> Mostrar indicador de Norte no topo (o Norte geográfico deve estar no topo, salvo indicação em contrário)</label>
+        <label class="campo"><span>Legenda / observações do croquis (opcional)</span><input type="text" data-bind="croqui.legenda" placeholder="Ex.: Norte à direita; escala aproximada 1:5.000"></label>
+      </div>
+      <div class="cartao">
+        <h2><span class="num">5</span><span class="titulo">Resumo da situação e briefing de saúde e segurança</span><button class="ajuda" type="button" data-campo="5" aria-label="Como preencher o campo 5">?</button></h2>
+        <p class="dica">(Para briefings ou transferência de comando): Reconhecer os potenciais riscos à saúde e a segurança e estabelecer medidas preventivas e/ou mitigadoras para proteger os respondedores e demais pessoas envolvidas no incidente. Ações esperadas: Eliminação de perigos (quando possível), fornecimento de equipamentos de proteção individual, alertas de riscos etc.</p>
+        <textarea data-bind="resumo" rows="8" aria-label="Resumo da situação e briefing de saúde e segurança"></textarea>
+      </div>
+    </section>
+
+    <!-- ===== Etapa 3: Objetivos e ações ===== -->
+    <section class="passo" data-passo="objetivos" data-titulo="3. Objetivos e ações">
+      <div class="cartao">
+        <h2><span class="num">7</span><span class="titulo">Objetivos atuais e planejados</span><button class="ajuda" type="button" data-campo="7" aria-label="Como preencher o campo 7">?</button></h2>
+        <textarea data-bind="objetivos" rows="7" aria-label="Objetivos atuais e planejados"></textarea>
+      </div>
+      <div class="cartao">
+        <h2><span class="num">8</span><span class="titulo">Ações, estratégias e táticas atuais e planejadas</span><button class="ajuda" type="button" data-campo="8" aria-label="Como preencher o campo 8">?</button></h2>
+        <div id="lista-acoes"></div>
+        <div class="acoes-linha">
+          <button class="btn azul" type="button" id="add-acao">+ Adicionar ação</button>
+          <button class="btn" type="button" id="ordenar-acoes">Ordenar por data/hora</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Etapa 4: Organização ===== -->
+    <section class="passo" data-passo="organizacao" data-titulo="4. Organização">
+      <div class="cartao">
+        <h2><span class="num">9</span><span class="titulo">Organização Atual</span><button class="ajuda" type="button" data-campo="9" aria-label="Como preencher o campo 9">?</button></h2>
+        <p class="dica">Insira os nomes das pessoas designadas em cada cargo/função. O organograma é desenhado automaticamente.</p>
+
+        <fieldset>
+          <legend>Comandante(s) do Incidente</legend>
+          <label class="check"><input type="checkbox" id="org-unificado"> Comando Unificado ativado (divide a caixa do Comandante do Incidente)</label>
+          <div id="lista-comandantes"></div>
+          <button class="btn pequeno azul oculto" type="button" id="add-comandante">+ Adicionar Comandante</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>Staff do Comando</legend>
+          <div class="grade g3">
+            <label class="campo"><span>Oficial de Ligação</span><input type="text" data-bind="organizacao.cargos.ligacao" data-org></label>
+            <label class="campo"><span>Oficial de Segurança</span><input type="text" data-bind="organizacao.cargos.seguranca" data-org></label>
+            <label class="campo"><span>Oficial de Informações Públicas</span><input type="text" data-bind="organizacao.cargos.infoPublica" data-org></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Staff Geral (Chefes de Seção)</legend>
+          <div class="grade g2">
+            <label class="campo"><span>Chefe da Seção de Operações</span><input type="text" data-bind="organizacao.cargos.operacoes" data-org></label>
+            <label class="campo"><span>Chefe da Seção de Planejamento</span><input type="text" data-bind="organizacao.cargos.planejamento" data-org></label>
+            <label class="campo"><span>Chefe da Seção de Logística</span><input type="text" data-bind="organizacao.cargos.logistica" data-org></label>
+            <label class="campo"><span>Chefe da Seção de Administração/Finanças</span><input type="text" data-bind="organizacao.cargos.adminFin" data-org></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Demais estruturas</legend>
+          <p class="dica" style="margin-top:0">Substitutos, Assistentes, Representantes das Agências, Unidades, Divisões etc.</p>
+          <div id="lista-extras"></div>
+          <button class="btn pequeno azul" type="button" id="add-extra">+ Adicionar cargo/função</button>
+        </fieldset>
+
+        <div class="rotulo">Pré-visualização do organograma</div>
+        <div class="org-preview" id="org-preview"></div>
+      </div>
+    </section>
+
+    <!-- ===== Etapa 5: Recursos ===== -->
+    <section class="passo" data-passo="recursos" data-titulo="5. Recursos">
+      <div class="cartao">
+        <h2><span class="num">10</span><span class="titulo">Resumo dos Recursos</span><button class="ajuda" type="button" data-campo="10" aria-label="Como preencher o campo 10">?</button></h2>
+        <div id="lista-recursos"></div>
+        <div class="acoes-linha">
+          <button class="btn azul" type="button" id="add-recurso">+ Adicionar recurso</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Etapa 6: Finalizar ===== -->
+    <section class="passo" data-passo="finalizar" data-titulo="6. Finalizar">
+      <div class="cartao">
+        <h2><span class="titulo">Gerar o formulário</span></h2>
+        <div id="pendencias"></div>
+        <div class="acoes-linha">
+          <button class="btn primario" type="button" id="btn-pdf">Baixar PDF</button>
+          <button class="btn azul oculto" type="button" id="btn-compartilhar">Compartilhar PDF</button>
+        </div>
+        <p class="dica" style="margin-top:10px">O PDF segue o layout de 4 páginas do modelo SCI-201. Páginas adicionais são criadas automaticamente quando necessário.</p>
+      </div>
+      <div class="cartao">
+        <h2><span class="titulo">Transferência de comando / continuar depois</span></h2>
+        <p class="dica">Salve o arquivo do formulário (.json) e envie ao próximo Comandante. Ele abre o arquivo neste mesmo app e continua o preenchimento.</p>
+        <div class="acoes-linha">
+          <button class="btn" type="button" id="btn-salvar-arquivo">Salvar arquivo do formulário</button>
+          <label class="btn">
+            Abrir arquivo do formulário
+            <input type="file" accept=".json,application/json" id="abrir-arquivo" class="sr">
+          </label>
+        </div>
+      </div>
+      <div class="cartao">
+        <h2><span class="titulo">Novo formulário</span></h2>
+        <p class="dica">Os dados ficam salvos apenas neste aparelho/navegador. Ao iniciar um novo formulário, o atual é apagado. Salve o arquivo ou o PDF antes.</p>
+        <button class="btn perigo" type="button" id="btn-novo">Iniciar novo formulário</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="navegacao" aria-label="Navegação entre etapas">
+    <div class="navegacao-linha">
+      <button class="btn" type="button" id="btn-anterior">‹ Anterior</button>
+      <span class="status" id="status" role="status" aria-live="polite"></span>
+      <button class="btn primario" type="button" id="btn-proximo">Próximo ›</button>
+    </div>
+  </nav>
+
+  <datalist id="lista-cargos">
+    <option value="CI – Comandante do Incidente"></option>
+    <option value="Oficial de Ligação"></option>
+    <option value="Oficial de Segurança"></option>
+    <option value="Oficial de Informações Públicas"></option>
+    <option value="Chefe da Seção de Operações"></option>
+    <option value="Chefe da Seção de Planejamento"></option>
+    <option value="Chefe da Seção de Logística"></option>
+    <option value="Chefe da Seção de Administração/Finanças"></option>
+  </datalist>
+  <datalist id="lista-extras-cargos">
+    <option value="Substituto do Comandante do Incidente"></option>
+    <option value="Assistente"></option>
+    <option value="Representante de Agência"></option>
+    <option value="Unidade de Situação"></option>
+    <option value="Unidade de Recursos"></option>
+  </datalist>
+
+  <dialog id="dlg-ajuda" aria-labelledby="dlg-titulo">
+    <div class="dlg-topo">
+      <h3 id="dlg-titulo"></h3>
+      <button type="button" id="dlg-fechar" aria-label="Fechar">×</button>
+    </div>
+    <div class="dlg-corpo" id="dlg-corpo"></div>
+  </dialog>
+
+  <script src="vendor/jspdf.umd.min.js" defer></script>
+  <script src="vendor/jspdf.plugin.autotable.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
