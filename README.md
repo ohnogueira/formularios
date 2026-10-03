@@ -38,4 +38,4 @@ Ao alterar qualquer arquivo de `sci201/`, incremente `VERSAO` em `sci201/sw.js`.
 | `sci201/js/store.js` | Armazenamento local (IndexedDB) |
 | `sci201/sw.js` | Funcionamento offline |
 | `sci201/js/imprimir.js` | Impressão (converte o PDF em páginas com pdf.js) |
-| `sci201/vendor/` | jsPDF 4.2.1 e jsPDF-AutoTable 5.0.8 (MIT); pdf.js 6.4.299, build legacy (Apache-2.0); fontes Liberation Sans (SIL OFL) |
+| `sci201/vendor/` | jsPDF 4.2.1 e jsPDF-AutoTable 5.0.8 (MIT); pdf.js 6.4.299, build legacy (Apache-2.0); fontes Liberation Sans (licença em `vendor/pdfjs/standard_fonts/LICENSE_LIBERATION`) |
