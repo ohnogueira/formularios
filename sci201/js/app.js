@@ -3,6 +3,7 @@ import { estadoVazio, normalizar, carregar, salvar, obterCaminho, definirCaminho
 import { Pad, prepararImagem, carregarImagem, girarImagem, girarTracos } from './pad.js';
 import { calcularLayout, paraSVG, medidorJsPDF, opcoesSuperior } from './org.js';
 import { gerarPDF, nomeArquivo } from './pdf.js';
+import { imprimirPDF, limparAreaImpressao } from './imprimir.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -17,6 +18,7 @@ const passos = $$('.passo');
 // ---------------- Salvamento automático ----------------
 let timerSalvar = null;
 function alterado() {
+  limparAreaImpressao();
   setStatus('Salvando…', false);
   clearTimeout(timerSalvar);
   timerSalvar = setTimeout(async () => {
@@ -487,45 +489,50 @@ function renderPendencias() {
     : '<div class="tudo-ok">Todos os campos principais foram preenchidos.</div>';
 }
 
+// PDF e impressão disponíveis em qualquer etapa (topo da tela) e na etapa Finalizar.
 let ultimoPDF = null;
-async function criarPDF() {
-  const btn = $('#btn-pdf');
-  btn.disabled = true;
-  const texto = btn.textContent;
-  btn.textContent = 'Gerando PDF…';
+let ocupado = false;
+async function comPDF(acao, botoes, textoOcupado) {
+  if (ocupado) return;
+  ocupado = true;
+  const originais = botoes.map((b) => b.textContent);
+  botoes.forEach((b) => {
+    b.disabled = true;
+    b.textContent = textoOcupado;
+  });
   try {
     const doc = await gerarPDF(estado);
     const nome = nomeArquivo(estado, 'pdf');
     ultimoPDF = new File([doc.output('blob')], nome, { type: 'application/pdf' });
-    return { doc, nome };
+    await acao(doc, nome);
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      console.error(e);
+      alert('Não foi possível concluir a operação. Detalhe: ' + e.message);
+    }
   } finally {
-    btn.disabled = false;
-    btn.textContent = texto;
+    botoes.forEach((b, i) => {
+      b.disabled = false;
+      b.textContent = originais[i];
+    });
+    ocupado = false;
   }
 }
-$('#btn-pdf').addEventListener('click', async () => {
-  try {
-    const { doc, nome } = await criarPDF();
-    doc.save(nome);
-  } catch (e) {
-    console.error(e);
-    alert('Não foi possível gerar o PDF. Detalhe: ' + e.message);
-  }
-});
+const salvarPDF = (botao) => comPDF((doc, nome) => doc.save(nome), [botao], 'Gerando…');
+const imprimir = (botao) => comPDF(() => imprimirPDF(ultimoPDF), [botao], 'Preparando…');
+$('#btn-pdf').addEventListener('click', (ev) => salvarPDF(ev.currentTarget));
+$('#btn-topo-pdf').addEventListener('click', (ev) => salvarPDF(ev.currentTarget));
+$('#btn-imprimir').addEventListener('click', (ev) => imprimir(ev.currentTarget));
+$('#btn-topo-imprimir').addEventListener('click', (ev) => imprimir(ev.currentTarget));
 if (navigator.canShare) {
   try {
     const teste = new File(['x'], 't.pdf', { type: 'application/pdf' });
     if (navigator.canShare({ files: [teste] })) $('#btn-compartilhar').classList.remove('oculto');
   } catch { /* não suportado */ }
 }
-$('#btn-compartilhar').addEventListener('click', async () => {
-  try {
-    await criarPDF();
-    await navigator.share({ files: [ultimoPDF], title: ultimoPDF.name });
-  } catch (e) {
-    if (e.name !== 'AbortError') alert('Não foi possível compartilhar. Use “Baixar PDF”.');
-  }
-});
+$('#btn-compartilhar').addEventListener('click', (ev) =>
+  comPDF(() => navigator.share({ files: [ultimoPDF], title: ultimoPDF.name }), [ev.currentTarget], 'Gerando…'),
+);
 
 function baixar(blob, nome) {
   const url = URL.createObjectURL(blob);
@@ -577,6 +584,7 @@ async function aplicarEstado(novo) {
 }
 
 async function iniciar() {
+  limparAreaImpressao();
   montarPassos();
   const salvo = await carregar();
   await aplicarEstado(salvo || estadoVazio());

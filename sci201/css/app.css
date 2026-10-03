@@ -205,4 +205,22 @@ dialog::backdrop { background: rgba(10, 14, 20, 0.55); }
 .oculto { display: none !important; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-@media print { .topo, .navegacao { display: none; } }
+@media (max-width: 480px) {
+  .topo h1 { font-size: 0.95rem; }
+  .topo h1 small { display: none; }
+  .topo-linha { gap: 6px; padding: 8px 12px; }
+  .topo .btn.pequeno { padding: 4px 8px; font-size: 0.8rem; }
+}
+.btn:disabled { opacity: 0.6; cursor: progress; }
+
+/* ---------- Impressão ---------- */
+#area-impressao { display: none; }
+@media print {
+  @page { size: A4; margin: 0; }
+  html, body { background: #fff; }
+  body > *:not(#area-impressao) { display: none !important; }
+  #area-impressao { display: block; }
+  #area-impressao img { display: block; width: 210mm; height: 297mm; break-after: page; page-break-after: always; }
+  #area-impressao img:last-child { break-after: auto; page-break-after: auto; }
+  .aviso-impressao { font: 14pt/1.4 Arial, sans-serif; margin: 20mm; }
+}

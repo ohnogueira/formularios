@@ -12,6 +12,7 @@ Aplicativo web instalável (PWA) para preencher o Formulário SCI-201 e gerar o 
 - Campo 6: assinatura com o dedo/mouse (opcional).
 - Campo 9: organograma gerado automaticamente, com Comando Unificado e cargos adicionais.
 - Campos 8 e 10: linhas ilimitadas; o PDF cria páginas de continuação automaticamente.
+- Botões **PDF** e **Imprimir** no topo da tela, disponíveis em qualquer etapa, mesmo com o formulário incompleto. A impressão é idêntica ao PDF.
 - Exporta PDF e um arquivo `.json` que pode ser reaberto (continuar depois / transferência de comando).
 
 ### Publicação (GitHub Pages)
@@ -36,4 +37,5 @@ Ao alterar qualquer arquivo de `sci201/`, incremente `VERSAO` em `sci201/sw.js`.
 | `sci201/js/pad.js` | Desenho/assinatura |
 | `sci201/js/store.js` | Armazenamento local (IndexedDB) |
 | `sci201/sw.js` | Funcionamento offline |
-| `sci201/vendor/` | jsPDF 4.2.1 e jsPDF-AutoTable 5.0.8 (licença MIT) |
+| `sci201/js/imprimir.js` | Impressão (converte o PDF em páginas com pdf.js) |
+| `sci201/vendor/` | jsPDF 4.2.1 e jsPDF-AutoTable 5.0.8 (MIT); pdf.js 6.4.299, build legacy (Apache-2.0); fontes Liberation Sans (SIL OFL) |

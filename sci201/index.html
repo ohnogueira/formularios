@@ -16,6 +16,8 @@
     <div class="topo-linha">
       <h1>SCI-201 · Briefing do Incidente<small>Preenchimento do formulário</small></h1>
       <button class="btn pequeno oculto" id="btn-instalar" type="button">Instalar app</button>
+      <button class="btn pequeno" id="btn-topo-pdf" type="button" title="Salvar/exportar como PDF (a qualquer momento)">PDF</button>
+      <button class="btn pequeno" id="btn-topo-imprimir" type="button" title="Imprimir o formulário (a qualquer momento)">Imprimir</button>
       <button class="btn pequeno" id="btn-guia" type="button">Guia</button>
     </div>
     <nav class="passos" id="passos" aria-label="Etapas do formulário"></nav>
@@ -190,9 +192,10 @@
         <div id="pendencias"></div>
         <div class="acoes-linha">
           <button class="btn primario" type="button" id="btn-pdf">Baixar PDF</button>
+          <button class="btn" type="button" id="btn-imprimir">Imprimir</button>
           <button class="btn azul oculto" type="button" id="btn-compartilhar">Compartilhar PDF</button>
         </div>
-        <p class="dica" style="margin-top:10px">O PDF segue o layout de 4 páginas do modelo SCI-201. Páginas adicionais são criadas automaticamente quando necessário.</p>
+        <p class="dica" style="margin-top:10px">Os botões “PDF” e “Imprimir” também ficam no topo da tela, disponíveis em qualquer etapa, mesmo com o formulário incompleto (campos vazios saem em branco). O PDF segue o layout de 4 páginas do modelo SCI-201. Páginas adicionais são criadas automaticamente quando necessário.</p>
       </div>
       <div class="cartao">
         <h2><span class="titulo">Transferência de comando / continuar depois</span></h2>
@@ -212,6 +215,8 @@
       </div>
     </section>
   </main>
+
+  <div id="area-impressao" aria-hidden="true"></div>
 
   <nav class="navegacao" aria-label="Navegação entre etapas">
     <div class="navegacao-linha">
