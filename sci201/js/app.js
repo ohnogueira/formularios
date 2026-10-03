@@ -4,6 +4,8 @@ import { Pad, prepararImagem, carregarImagem, girarImagem, girarTracos } from '.
 import { calcularLayout, paraSVG, medidorJsPDF, opcoesSuperior } from './org.js';
 import { gerarPDF, nomeArquivo } from './pdf.js';
 import { imprimirPDF, limparAreaImpressao } from './imprimir.js';
+import { paraPlano, dePlano, planoDeAninhado, aninhar, diferencas, mesclar, resumoAlteracoes } from './sync.js';
+import * as nuvem from './nuvem.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -14,11 +16,17 @@ let padCroqui = null;
 let padAssinatura = null;
 let passoAtual = 0;
 const passos = $$('.passo');
+let modo = 'inicio'; // 'inicio' | 'local' | 'nuvem'
+let podeEditar = true;
 
 // ---------------- Salvamento automático ----------------
 let timerSalvar = null;
 function alterado() {
   limparAreaImpressao();
+  if (modo === 'nuvem') {
+    if (podeEditar) agendarEnvio();
+    return;
+  }
   setStatus('Salvando…', false);
   clearTimeout(timerSalvar);
   timerSalvar = setTimeout(async () => {
@@ -238,6 +246,10 @@ $('#assinatura-limpar').addEventListener('click', () => padAssinatura.limpar());
 
 // ---------------- Campo 8: Ações ----------------
 function renderAcoes() {
+  comFoco($('#lista-acoes'), renderAcoesBase);
+  travar();
+}
+function renderAcoesBase() {
   const el = $('#lista-acoes');
   if (!estado.acoes.length) {
     el.innerHTML = '<p class="vazio">Nenhuma ação registrada. Toque em “+ Adicionar ação”.</p>';
@@ -247,7 +259,7 @@ function renderAcoes() {
     .map(
       (a, i) => `
     <div class="item" data-id="${a.id}">
-      <div class="item-topo"><span>Ação ${i + 1}</span><button class="btn pequeno perigo" type="button" data-remover-acao="${a.id}">Remover</button></div>
+      <div class="item-topo"><span>Ação ${i + 1}</span><button class="btn pequeno perigo so-edicao" type="button" data-remover-acao="${a.id}">Remover</button></div>
       <div class="grade g2">
         <label class="campo"><span>Data</span><input type="date" data-acao="data" value="${esc(a.data)}"></label>
         <label class="campo"><span>Horário</span><input type="time" data-acao="hora" value="${esc(a.hora)}"></label>
@@ -289,6 +301,10 @@ $('#ordenar-acoes').addEventListener('click', () => {
 
 // ---------------- Campo 9: Organização ----------------
 function renderComandantes() {
+  comFoco($('#lista-comandantes'), renderComandantesBase);
+  travar();
+}
+function renderComandantesBase() {
   const org = estado.organizacao;
   $('#org-unificado').checked = org.unificado;
   const lista = org.unificado ? org.comandantes : org.comandantes.slice(0, 1);
@@ -296,7 +312,7 @@ function renderComandantes() {
     .map(
       (c, i) => `
     <div class="item" data-id="${c.id}">
-      ${org.unificado ? `<div class="item-topo"><span>Comandante ${i + 1}</span>${lista.length > 1 ? `<button class="btn pequeno perigo" type="button" data-remover-cmd="${c.id}">Remover</button>` : ''}</div>` : ''}
+      ${org.unificado ? `<div class="item-topo"><span>Comandante ${i + 1}</span>${lista.length > 1 ? `<button class="btn pequeno perigo so-edicao" type="button" data-remover-cmd="${c.id}">Remover</button>` : ''}</div>` : ''}
       <div class="grade g2">
         <label class="campo"><span>Nome</span><input type="text" data-cmd="nome" value="${esc(c.nome)}"></label>
         <label class="campo"><span>Instituição</span><input type="text" data-cmd="instituicao" value="${esc(c.instituicao)}"></label>
@@ -338,6 +354,10 @@ $('#lista-comandantes').addEventListener('click', (ev) => {
 });
 
 function renderExtras() {
+  comFoco($('#lista-extras'), renderExtrasBase);
+  travar();
+}
+function renderExtrasBase() {
   const org = estado.organizacao;
   if (!org.extras.length) {
     $('#lista-extras').innerHTML = '';
@@ -350,7 +370,7 @@ function renderExtras() {
         .join('');
       return `
     <div class="item" data-id="${e.id}">
-      <div class="item-topo"><span>Cargo/função adicional</span><button class="btn pequeno perigo" type="button" data-remover-extra="${e.id}">Remover</button></div>
+      <div class="item-topo"><span>Cargo/função adicional</span><button class="btn pequeno perigo so-edicao" type="button" data-remover-extra="${e.id}">Remover</button></div>
       <div class="grade g3">
         <label class="campo"><span>Cargo/Função</span><input type="text" data-extra="cargo" list="lista-extras-cargos" value="${esc(e.cargo)}"></label>
         <label class="campo"><span>Nome</span><input type="text" data-extra="nome" value="${esc(e.nome)}"></label>
@@ -411,6 +431,10 @@ function renderOrgPreview() {
 
 // ---------------- Campo 10: Recursos ----------------
 function renderRecursos() {
+  comFoco($('#lista-recursos'), renderRecursosBase);
+  travar();
+}
+function renderRecursosBase() {
   const el = $('#lista-recursos');
   if (!estado.recursos.length) {
     el.innerHTML = '<p class="vazio">Nenhum recurso registrado. Toque em “+ Adicionar recurso”.</p>';
@@ -421,7 +445,7 @@ function renderRecursos() {
     .map(
       (r, i) => `
     <div class="item" data-id="${r.id}">
-      <div class="item-topo"><span>Recurso ${i + 1}</span><button class="btn pequeno perigo" type="button" data-remover-recurso="${r.id}">Remover</button></div>
+      <div class="item-topo"><span>Recurso ${i + 1}</span><button class="btn pequeno perigo so-edicao" type="button" data-remover-recurso="${r.id}">Remover</button></div>
       <div class="grade g2">
         <div class="campo"><span class="rotulo">Recurso ${aj('recurso', 'Recurso')}</span><input type="text" data-rec="recurso" value="${esc(r.recurso)}" placeholder="Ex.: HTP-5" aria-label="Recurso"></div>
         <div class="campo"><span class="rotulo">Identificador do Recurso ${aj('identificador', 'Identificador do Recurso')}</span><input type="text" data-rec="identificador" value="${esc(r.identificador)}" placeholder="Ex.: PR-EBM" aria-label="Identificador do Recurso"></div>
@@ -555,7 +579,10 @@ $('#abrir-arquivo').addEventListener('change', async (ev) => {
   try {
     const dados = JSON.parse(await arq.text());
     if (dados.tipo !== 'SCI-201') throw new Error('Arquivo não é um formulário SCI-201 deste app.');
-    if (!confirm('Abrir este arquivo substituirá o formulário atual neste aparelho. Continuar?')) return;
+    const aviso = modo === 'nuvem'
+      ? 'Importar este arquivo substituirá o conteúdo do incidente compartilhado (para todos). Continuar?'
+      : 'Abrir este arquivo substituirá o formulário atual neste aparelho. Continuar?';
+    if (!confirm(aviso)) return;
     await aplicarEstado(normalizar(dados));
     alterado();
     irPara(0);
@@ -570,7 +597,7 @@ $('#btn-novo').addEventListener('click', async () => {
   irPara(0);
 });
 
-// ---------------- Inicialização ----------------
+// ---------------- Estado na tela ----------------
 async function aplicarEstado(novo) {
   estado = novo;
   preencherCampos();
@@ -581,18 +608,604 @@ async function aplicarEstado(novo) {
   renderExtras();
   renderRecursos();
   renderOrgPreview();
+  travar();
 }
 
-async function iniciar() {
-  limparAreaImpressao();
-  montarPassos();
+// Recria uma lista preservando o campo em edição (cursor), quando dados chegam de outra pessoa.
+function comFoco(container, fn) {
+  const ativo = document.activeElement;
+  let info = null;
+  if (ativo && container.contains(ativo)) {
+    const item = ativo.closest('[data-id]');
+    const attr = ['data-acao', 'data-rec', 'data-cmd', 'data-extra'].find((a) => ativo.hasAttribute(a));
+    if (item && attr) info = { id: item.dataset.id, attr, valor: ativo.getAttribute(attr), ini: ativo.selectionStart, fim: ativo.selectionEnd };
+  }
+  fn();
+  if (!info) return;
+  const el = container.querySelector(`[data-id="${CSS.escape(info.id)}"] [${info.attr}="${info.valor}"]`);
+  if (!el) return;
+  el.focus();
+  try {
+    el.setSelectionRange(info.ini, info.fim);
+  } catch { /* campo sem seleção de texto */ }
+}
+
+// Somente leitura: desabilita campos e esconde os comandos de edição.
+function travar() {
+  const leitura = !podeEditar;
+  document.body.classList.toggle('somente-leitura', leitura);
+  for (const el of $$('#conteudo .passo input, #conteudo .passo textarea, #conteudo .passo select')) el.disabled = leitura;
+  if (padCroqui) padCroqui.ativo = !leitura;
+  if (padAssinatura) padAssinatura.ativo = !leitura;
+}
+
+// ---------------- Modos e navegação entre telas ----------------
+const params = new URLSearchParams(location.search);
+function urlPara(consulta) {
+  const u = new URL(location.href);
+  u.search = '';
+  u.hash = '';
+  for (const [k, v] of Object.entries(consulta)) u.searchParams.set(k, v);
+  if (params.has('emulador')) u.searchParams.set('emulador', '');
+  return u.toString().replace(/=(&|$)/g, '$1');
+}
+const navegar = (consulta) => location.assign(urlPara(consulta));
+
+function definirModo(m) {
+  modo = m;
+  document.body.classList.remove('modo-inicio', 'modo-local', 'modo-nuvem');
+  document.body.classList.add('modo-' + m);
+  $('#tela-inicio').classList.toggle('oculto', m !== 'inicio');
+  $('#barra-modo').classList.toggle('oculto', m === 'inicio');
+}
+
+$('#btn-inicio').addEventListener('click', async () => {
+  if (modo === 'nuvem') {
+    enviar();
+    descarregarHistorico();
+    await nuvem.esperarEnvios(1500);
+  }
+  navegar({});
+});
+$('#btn-abrir-local').addEventListener('click', () => navegar({ local: '' }));
+
+function abrirDialogo(titulo, subtitulo, html) {
+  $('#dlg-titulo').innerHTML = `${esc(titulo)}${subtitulo ? `<small>${esc(subtitulo)}</small>` : ''}`;
+  const corpo = $('#dlg-corpo');
+  corpo.innerHTML = html;
+  if (!dlg.open) dlg.showModal();
+  corpo.scrollTop = 0;
+  return corpo;
+}
+
+const fmtData = (d) =>
+  d ? d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+async function entrar() {
+  try {
+    await nuvem.entrar();
+  } catch (e) {
+    console.error(e);
+    const msgs = {
+      'auth/unauthorized-domain': 'Este endereço ainda não está autorizado no Firebase (Authentication → Configurações → Domínios autorizados).',
+      'auth/network-request-failed': 'Sem conexão com a internet. O login exige internet.',
+    };
+    alert('Não foi possível entrar. ' + (msgs[e.code] || e.message || ''));
+  }
+}
+
+// ---------------- Tela inicial ----------------
+async function iniciarInicio() {
+  definirModo('inicio');
+  const alvo = $('#inicio-nuvem');
+  if (!nuvem.configurado()) {
+    alvo.innerHTML = '<p class="pendencias">O modo compartilhado ainda não foi configurado neste app. Use o formulário local.</p>';
+    return;
+  }
+  alvo.innerHTML = '<p class="vazio">Carregando…</p>';
+  try {
+    await nuvem.iniciarNuvem();
+  } catch (e) {
+    console.error(e);
+    alvo.innerHTML = '<p class="pendencias">Não foi possível carregar o modo compartilhado (verifique a internet). O formulário local funciona sem internet.</p>';
+    return;
+  }
+  nuvem.aoMudarUsuario(() => renderInicioNuvem());
+}
+
+async function renderInicioNuvem() {
+  const alvo = $('#inicio-nuvem');
+  const u = nuvem.usuario();
+  if (!u) {
+    alvo.innerHTML = `
+      <p>Para <strong>criar</strong> um incidente ou <strong>editar</strong>, entre com sua conta Google.<br>
+      Para apenas <strong>consultar</strong>, basta abrir o link do incidente recebido.</p>
+      <button class="btn primario" type="button" id="btn-entrar">Entrar com Google</button>`;
+    $('#btn-entrar').onclick = entrar;
+    return;
+  }
+  alvo.innerHTML = `
+    <div class="conta"><span class="quem">Conectado como <strong>${esc(u.nome)}</strong><br><small>${esc(u.email)}</small></span>
+      <button class="btn pequeno" type="button" id="btn-sair">Sair</button></div>
+    <button class="btn primario" type="button" id="btn-novo-incidente">+ Novo incidente compartilhado</button>
+    <div class="lista-incidentes" id="lista-incidentes"><p class="vazio">Carregando seus incidentes…</p></div>`;
+  $('#btn-sair').onclick = () => nuvem.sair();
+  $('#btn-novo-incidente').onclick = async (ev) => {
+    ev.currentTarget.disabled = true;
+    try {
+      const id = await criarIncidenteCom(estadoVazio());
+      await nuvem.esperarEnvios(3000);
+      navegar({ i: id });
+    } catch (e) {
+      alert('Não foi possível criar o incidente. ' + e.message);
+      ev.currentTarget.disabled = false;
+    }
+  };
+  try {
+    const lista = await nuvem.meusIncidentes();
+    $('#lista-incidentes').innerHTML = lista.length
+      ? lista
+          .map(
+            (i) => `<button class="incidente" type="button" data-abrir="${esc(i.id)}">
+              <strong>${esc(i.nome || 'Incidente sem nome')}${i.encerrado ? '<span class="selo encerrado">Encerrado</span>' : '<span class="selo">Em andamento</span>'}${i.dono ? '<span class="selo dono">Criado por você</span>' : ''}</strong>
+              <small>${i.numero ? `Nº ${esc(i.numero)} · ` : ''}Atualizado ${esc(fmtData(i.atualizadoEm))}${i.atualizadoPor ? ` por ${esc(i.atualizadoPor)}` : ''}</small>
+            </button>`,
+          )
+          .join('')
+      : '<p class="vazio">Nenhum incidente em que você seja editor.</p>';
+    $('#lista-incidentes').onclick = (ev) => {
+      const b = ev.target.closest('[data-abrir]');
+      if (b) navegar({ i: b.dataset.abrir });
+    };
+  } catch (e) {
+    console.error(e);
+    $('#lista-incidentes').innerHTML = '<p class="vazio">Não foi possível carregar a lista (verifique a internet).</p>';
+  }
+}
+
+function anexosDe(est) {
+  return {
+    croquiImagem: { imagem: est.croqui.imagem || null, largura: est.croqui.largura, altura: est.croqui.altura },
+    croquiDesenho: { tracos: JSON.stringify(est.croqui.tracos || []) },
+  };
+}
+async function criarIncidenteCom(est) {
+  return nuvem.criarIncidente({
+    dados: aninhar(paraPlano(est)),
+    ...anexosDe(est),
+    nome: est.incidente.nome,
+    numero: est.incidente.numero,
+  });
+}
+
+// ---------------- Formulário local ----------------
+async function iniciarLocal() {
+  definirModo('local');
+  podeEditar = true;
   const salvo = await carregar();
   await aplicarEstado(salvo || estadoVazio());
   if (salvo) setStatus('Salvo neste aparelho', true);
   else alterado();
-  let inicial = 0;
-  try { inicial = Number(sessionStorage.getItem('sci201-passo')) || 0; } catch { /* sem armazenamento */ }
-  irPara(inicial);
+  renderBarra();
+}
+
+async function localParaNuvem() {
+  if (!nuvem.configurado()) return alert('O modo compartilhado ainda não foi configurado neste app.');
+  try {
+    await nuvem.iniciarNuvem();
+    if (!nuvem.usuario()) {
+      await entrar();
+      if (!nuvem.usuario()) return;
+    }
+    if (!confirm('Criar um incidente compartilhado com os dados deste formulário? O formulário local continua salvo neste aparelho.')) return;
+    const id = await criarIncidenteCom(estado);
+    await nuvem.esperarEnvios(3000);
+    navegar({ i: id });
+  } catch (e) {
+    console.error(e);
+    alert('Não foi possível criar o incidente compartilhado. ' + (e.message || ''));
+  }
+}
+$('#btn-local-para-nuvem').addEventListener('click', localParaNuvem);
+
+// ---------------- Incidente compartilhado ----------------
+let ctx = null; // { id, base, baseImg, baseDes, info, carregado }
+const IMG_PADRAO = { imagem: null, largura: 1400, altura: 1000 };
+const jsonImg = (c) => JSON.stringify({ imagem: c.imagem || null, largura: c.largura, altura: c.altura });
+
+async function iniciarIncidente(id) {
+  definirModo('nuvem');
+  podeEditar = false;
+  ctx = { id, base: null, baseImg: null, baseDes: null, info: null, carregado: false };
+  await aplicarEstado(estadoVazio());
+  setStatus('Carregando incidente…', false);
+  renderBarra();
+  if (!nuvem.configurado()) {
+    renderBarra('O modo compartilhado não está configurado neste app.');
+    return;
+  }
+  try {
+    await nuvem.iniciarNuvem();
+  } catch (e) {
+    console.error(e);
+    renderBarra('Não foi possível carregar o incidente. Verifique a internet e recarregue a página.');
+    return;
+  }
+  nuvem.aoMudarUsuario(() => {
+    atualizarPermissao();
+    renderBarra();
+  });
+  nuvem.observarIncidente(id, { aoDados, aoImagem, aoDesenho, aoErro: (e) => {
+    console.error(e);
+    setStatus('Erro de conexão com o incidente', false);
+  } });
+}
+
+function atualizarPermissao() {
+  const u = nuvem.usuario();
+  const i = ctx?.info;
+  const antes = podeEditar;
+  podeEditar = !!(u && i && ctx.carregado && i.editores.includes(u.email) && !i.encerrado);
+  if (antes !== podeEditar) travar();
+}
+
+async function aoDados(dados, meta) {
+  if (!dados) {
+    renderBarra(meta.fromCache
+      ? 'Sem conexão: este incidente ainda não foi aberto neste aparelho. Conecte-se à internet e recarregue.'
+      : 'Incidente não encontrado. Verifique o link recebido.');
+    setStatus('', false);
+    return;
+  }
+  ctx.info = {
+    nome: dados.nome, numero: dados.numero, donoUid: dados.donoUid, donoEmail: dados.donoEmail, donoNome: dados.donoNome,
+    editores: dados.editores || [], encerrado: !!dados.encerrado,
+    atualizadoEm: dados.atualizadoEm?.toDate?.() || null, atualizadoPor: dados.atualizadoPor || '',
+  };
+  const remoto = planoDeAninhado(dados.dados || {});
+  if (!ctx.carregado) {
+    ctx.carregado = true;
+    ctx.base = remoto;
+    const novo = dePlano(remoto);
+    copiarCroqui(novo);
+    await aplicarEstado(novo);
+    let inicial = 0;
+    try { inicial = Number(sessionStorage.getItem('sci201-passo')) || 0; } catch { /* sem armazenamento */ }
+    irPara(inicial);
+  } else {
+    const local = paraPlano(estado);
+    const mesclado = mesclar(ctx.base, local, remoto);
+    ctx.base = remoto;
+    aplicarRemoto(local, mesclado);
+  }
+  atualizarPermissao();
+  renderBarra();
+  ctx.meta = meta;
+  statusNuvem();
+}
+
+function statusNuvem() {
+  const meta = ctx?.meta;
+  if (!meta) return;
+  if (!navigator.onLine) {
+    setStatus(meta.hasPendingWrites ? 'Sem internet — alterações guardadas, serão enviadas ao reconectar' : 'Sem internet — exibindo a última versão recebida', false);
+  } else if (meta.hasPendingWrites) setStatus('Enviando alterações…', false);
+  else if (meta.fromCache) setStatus('Conectando…', false);
+  else setStatus('Sincronizado', true);
+}
+window.addEventListener('online', () => modo === 'nuvem' && statusNuvem());
+window.addEventListener('offline', () => modo === 'nuvem' && statusNuvem());
+
+function copiarCroqui(novo) {
+  Object.assign(novo.croqui, {
+    imagem: estado.croqui.imagem, largura: estado.croqui.largura, altura: estado.croqui.altura, tracos: estado.croqui.tracos,
+  });
+}
+
+function aplicarRemoto(localPlano, mesclado) {
+  const mudou = Object.keys({ ...localPlano, ...mesclado }).filter((k) => localPlano[k] !== mesclado[k]);
+  if (!mudou.length) return;
+  const novo = dePlano(mesclado);
+  copiarCroqui(novo);
+  estado = novo;
+  for (const el of $$('[data-bind]')) {
+    if (el === document.activeElement) continue;
+    const v = obterCaminho(estado, el.dataset.bind);
+    if (el.type === 'checkbox') el.checked = !!v;
+    else if (el.value !== (v ?? '')) el.value = v ?? '';
+  }
+  atualizarNorte();
+  padAssinatura.definirTracos(estado.preparadoPor.assinatura);
+  const toca = (p) => mudou.some((k) => k.startsWith(p));
+  if (toca('acoes.')) renderAcoes();
+  if (toca('recursos.')) renderRecursos();
+  if (toca('organizacao.')) {
+    renderComandantes();
+    renderExtras();
+    renderOrgPreview();
+  }
+  limparAreaImpressao();
+  if (passos[passoAtual]?.dataset.passo === 'finalizar') renderPendencias();
+}
+
+function aoImagem(d) {
+  const remoto = JSON.stringify(d ? { imagem: d.imagem ?? null, largura: d.largura ?? 1400, altura: d.altura ?? 1000 } : IMG_PADRAO);
+  const local = jsonImg(estado.croqui);
+  if ((ctx.baseImg === null || local === ctx.baseImg) && remoto !== local) {
+    Object.assign(estado.croqui, JSON.parse(remoto));
+    iniciarCroqui();
+  }
+  ctx.baseImg = remoto;
+}
+
+function aoDesenho(d) {
+  const remoto = d?.tracos || '[]';
+  const local = JSON.stringify(estado.croqui.tracos);
+  if ((ctx.baseDes === null || local === ctx.baseDes) && remoto !== local) {
+    try {
+      estado.croqui.tracos = JSON.parse(remoto);
+    } catch {
+      estado.croqui.tracos = [];
+    }
+    padCroqui.definirTracos(estado.croqui.tracos);
+  }
+  ctx.baseDes = remoto;
+}
+
+// Envio das alterações (somente campos alterados) e histórico agrupado por minuto.
+let timerEnvio = null;
+let timerHist = null;
+let ultimoHist = 0;
+const hist = { campos: new Set(), detalhes: new Map() };
+function agendarEnvio() {
+  setStatus('Alterações pendentes…', false);
+  clearTimeout(timerEnvio);
+  timerEnvio = setTimeout(enviar, 1500);
+}
+function acumularHistorico(r) {
+  r.campos.forEach((c) => hist.campos.add(c));
+  r.detalhes.forEach((d) => hist.detalhes.set(d.campo, d.valor));
+}
+function tirarHistorico(forcar) {
+  if (!hist.campos.size) return null;
+  if (!forcar && Date.now() - ultimoHist < 60000) {
+    clearTimeout(timerHist);
+    timerHist = setTimeout(descarregarHistorico, 61000);
+    return null;
+  }
+  ultimoHist = Date.now();
+  const r = { campos: [...hist.campos], detalhes: [...hist.detalhes].slice(-40).map(([campo, valor]) => ({ campo, valor })) };
+  hist.campos.clear();
+  hist.detalhes.clear();
+  return r;
+}
+function descarregarHistorico() {
+  if (!ctx || !podeEditar) return;
+  const r = tirarHistorico(true);
+  if (r) nuvem.registrarHistorico(ctx.id, r).catch(erroEnvio);
+}
+function erroEnvio(e) {
+  console.error(e);
+  setStatus(e.code === 'permission-denied' ? 'Sem permissão para editar este incidente' : 'Erro ao enviar alterações', false);
+}
+function enviar() {
+  clearTimeout(timerEnvio);
+  if (!ctx?.carregado || !podeEditar) return;
+  const atual = paraPlano(estado);
+  const { alterados, removidos } = diferencas(ctx.base, atual);
+  const temDados = Object.keys(alterados).length || removidos.length;
+  if (temDados) acumularHistorico(resumoAlteracoes(alterados, removidos));
+  const img = jsonImg(estado.croqui);
+  const imgMudou = ctx.baseImg !== null && img !== ctx.baseImg;
+  const des = JSON.stringify(estado.croqui.tracos);
+  let desMudou = ctx.baseDes !== null && des !== ctx.baseDes;
+  if (desMudou && des.length > 900000) {
+    desMudou = false;
+    alert('O desenho do croquis ficou grande demais para ser compartilhado. Use “Desfazer” ou “Apagar desenho” e simplifique o desenho.');
+  }
+  if (imgMudou || desMudou) {
+    acumularHistorico({ campos: ['4. Mapa/Croquis'], detalhes: [{ campo: '4. Mapa/Croquis', valor: imgMudou ? '(imagem alterada)' : '(desenho alterado)' }] });
+  }
+  const r = tirarHistorico(false);
+  if (temDados) {
+    ctx.base = atual;
+    nuvem.enviarAlteracoes(ctx.id, alterados, removidos, r).catch(erroEnvio);
+  } else if (r) nuvem.registrarHistorico(ctx.id, r).catch(erroEnvio);
+  if (imgMudou) {
+    ctx.baseImg = img;
+    nuvem.salvarAnexo(ctx.id, 'croquiImagem', JSON.parse(img)).catch(erroEnvio);
+  }
+  if (desMudou) {
+    ctx.baseDes = des;
+    nuvem.salvarAnexo(ctx.id, 'croquiDesenho', { tracos: des }).catch(erroEnvio);
+  }
+}
+window.addEventListener('pagehide', () => {
+  if (modo === 'nuvem') {
+    enviar();
+    descarregarHistorico();
+  }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && modo === 'nuvem') {
+    enviar();
+    descarregarHistorico();
+  }
+});
+
+// ---------------- Barra de situação (modo local / compartilhado) ----------------
+function renderBarra(erro) {
+  const b = $('#barra-modo');
+  b.className = 'barra-modo so-form';
+  if (modo === 'local') {
+    b.classList.add('local');
+    b.innerHTML = `<div class="texto"><strong>Formulário local</strong>Salvo somente neste aparelho. Funciona sem internet.</div>
+      ${nuvem.configurado() ? '<div class="acoes-linha"><button class="btn pequeno azul" type="button" data-barra="compartilhar">Compartilhar com a equipe</button></div>' : ''}`;
+    return;
+  }
+  if (erro) {
+    b.classList.add('leitura');
+    b.innerHTML = `<div class="texto"><strong>Incidente compartilhado</strong>${esc(erro)}</div>`;
+    return;
+  }
+  const i = ctx?.info;
+  if (!i) {
+    b.innerHTML = '<div class="texto"><strong>Incidente compartilhado</strong>Carregando…</div>';
+    return;
+  }
+  const u = nuvem.usuario();
+  const atualizado = i.atualizadoEm ? `Atualizado em ${esc(fmtData(i.atualizadoEm))}${i.atualizadoPor ? ` por ${esc(i.atualizadoPor)}` : ''}.` : '';
+  const ehEditor = u && i.editores.includes(u.email);
+  const ehDono = u && u.uid === i.donoUid;
+  const botoes = ['<button class="btn pequeno" type="button" data-barra="link">Link de consulta</button>'];
+  let texto;
+  if (i.encerrado) {
+    b.classList.add('encerrado');
+    texto = `<strong>Incidente encerrado — somente consulta</strong>${atualizado}`;
+  } else if (podeEditar) {
+    texto = `<strong>Incidente compartilhado · você está editando</strong>Conectado como ${esc(u.nome)}. As alterações aparecem em tempo real para quem tem o link. ${atualizado}`;
+  } else if (u) {
+    b.classList.add('leitura');
+    texto = `<strong>Somente consulta</strong>A conta ${esc(u.email)} não está autorizada a editar. Peça ao Comandante do Incidente para incluí-la. ${atualizado}`;
+  } else {
+    b.classList.add('leitura');
+    texto = `<strong>Somente consulta · atualizado em tempo real</strong>${atualizado}`;
+    botoes.push('<button class="btn pequeno azul" type="button" data-barra="entrar">Entrar para editar</button>');
+  }
+  if (ehEditor) {
+    botoes.push(`<button class="btn pequeno" type="button" data-barra="editores">${ehDono ? 'Editores' : 'Ver editores'}</button>`);
+    botoes.push('<button class="btn pequeno" type="button" data-barra="historico">Histórico</button>');
+  }
+  if (u) botoes.push('<button class="btn pequeno" type="button" data-barra="sair">Sair</button>');
+  b.innerHTML = `<div class="texto">${texto}</div><div class="acoes-linha">${botoes.join('')}</div>`;
+}
+
+$('#barra-modo').addEventListener('click', (ev) => {
+  const acao = ev.target.closest('[data-barra]')?.dataset.barra;
+  if (!acao) return;
+  if (acao === 'compartilhar') localParaNuvem();
+  if (acao === 'entrar') entrar();
+  if (acao === 'sair') nuvem.sair();
+  if (acao === 'link') dialogoLink();
+  if (acao === 'editores') dialogoEditores();
+  if (acao === 'historico') dialogoHistorico();
+});
+
+function linkConsulta() {
+  const u = new URL(location.href);
+  u.search = '';
+  u.hash = '';
+  u.searchParams.set('i', ctx.id);
+  if (params.has('emulador')) u.searchParams.set('emulador', '');
+  return u.toString().replace(/=(&|$)/g, '$1');
+}
+
+function dialogoLink() {
+  const link = linkConsulta();
+  const nome = ctx.info?.nome || 'Incidente';
+  const texto = `SCI-201 · ${nome}: ${link}`;
+  const corpo = abrirDialogo('Link de consulta', nome, `
+    <p>Qualquer pessoa com este link pode <strong>consultar, imprimir e gerar o PDF</strong> do SCI-201 deste incidente, sem login, com atualização em tempo real.</p>
+    <p>Para <strong>editar</strong>, a pessoa precisa entrar com uma conta Google autorizada pelo Comandante do Incidente (botão “Editores”).</p>
+    <div class="link-caixa"><input type="text" readonly value="${esc(link)}" aria-label="Link do incidente"><button class="btn pequeno" type="button" data-l="copiar">Copiar</button></div>
+    <div class="acoes-linha">
+      <a class="btn pequeno" href="https://wa.me/?text=${encodeURIComponent(texto)}" target="_blank" rel="noopener">Enviar pelo WhatsApp</a>
+      ${navigator.share ? '<button class="btn pequeno" type="button" data-l="compartilhar">Compartilhar…</button>' : ''}
+    </div>
+    <p class="fonte">Atenção: não publique o link em locais abertos. Quem tiver o link consegue ler o formulário.</p>`);
+  corpo.onclick = async (ev) => {
+    const a = ev.target.closest('[data-l]')?.dataset.l;
+    if (a === 'copiar') {
+      try {
+        await navigator.clipboard.writeText(link);
+        ev.target.textContent = 'Copiado';
+      } catch {
+        corpo.querySelector('input').select();
+      }
+    }
+    if (a === 'compartilhar') navigator.share({ title: `SCI-201 · ${nome}`, text: texto, url: link }).catch(() => {});
+  };
+}
+
+function dialogoEditores() {
+  const i = ctx.info;
+  const u = nuvem.usuario();
+  const ehDono = u && u.uid === i.donoUid;
+  const desenhar = () => {
+    const linhas = i.editores
+      .map((e) => `<div class="editor-linha"><span>${esc(e)}${e === i.donoEmail ? ' <span class="selo dono">Criador</span>' : ''}</span>
+        ${ehDono && e !== i.donoEmail ? `<button class="btn pequeno perigo" type="button" data-rem="${esc(e)}">Remover</button>` : ''}</div>`)
+      .join('');
+    const corpo = abrirDialogo('Editores do incidente', i.nome || '', `
+      <p>Somente estas contas Google podem editar o SCI-201 deste incidente (por exemplo: Comandante do Incidente e Líder de Documentação).</p>
+      ${linhas}
+      ${ehDono ? `
+        <form id="form-editor" class="acoes-linha" style="margin-top:12px">
+          <input type="email" required placeholder="e-mail da conta Google" aria-label="E-mail do novo editor" style="flex:1 1 220px">
+          <button class="btn pequeno azul" type="submit">Autorizar</button>
+        </form>
+        <h4>Situação do incidente</h4>
+        <p>${i.encerrado ? 'Encerrado: ninguém edita.' : 'Em andamento.'}</p>
+        <button class="btn pequeno ${i.encerrado ? '' : 'perigo'}" type="button" data-enc="1">${i.encerrado ? 'Reabrir incidente' : 'Encerrar incidente'}</button>` : '<p class="fonte">Somente quem criou o incidente pode alterar a lista de editores.</p>'}`);
+    corpo.onclick = async (ev) => {
+      const rem = ev.target.closest('[data-rem]')?.dataset.rem;
+      if (rem && confirm(`Remover a permissão de edição de ${rem}?`)) {
+        await nuvem.definirEditores(ctx.id, i.editores.filter((e) => e !== rem), `Editor removido: ${rem}`).catch(erroEnvio);
+        desenhar();
+      }
+      if (ev.target.closest('[data-enc]')) {
+        const novo = !i.encerrado;
+        if (!confirm(novo ? 'Encerrar o incidente? O formulário ficará somente para consulta.' : 'Reabrir o incidente para edição?')) return;
+        enviar();
+        await nuvem.definirEncerrado(ctx.id, novo).catch(erroEnvio);
+        desenhar();
+      }
+    };
+    const form = corpo.querySelector('#form-editor');
+    if (form) {
+      form.onsubmit = async (ev) => {
+        ev.preventDefault();
+        const email = form.querySelector('input').value.trim().toLowerCase();
+        if (!email || i.editores.includes(email)) return;
+        await nuvem.definirEditores(ctx.id, [...i.editores, email], `Editor autorizado: ${email}`).catch(erroEnvio);
+        desenhar();
+      };
+    }
+  };
+  desenhar();
+}
+
+async function dialogoHistorico() {
+  const corpo = abrirDialogo('Histórico de alterações', ctx.info?.nome || '', '<p class="vazio">Carregando…</p>');
+  try {
+    const itens = await nuvem.historico(ctx.id);
+    corpo.innerHTML = itens.length
+      ? itens
+          .map((h) => `<div class="hist-item">
+            <div class="quando">${esc(fmtData(h.em))} · ${esc(h.nome || '')} (${esc(h.email || '')})</div>
+            <strong>${esc(h.acao)}</strong>${h.campos?.length ? `: ${esc(h.campos.join('; '))}` : ''}
+            ${h.detalhes?.length ? `<details><summary>Detalhes</summary><ul>${h.detalhes.map((d) => `<li><strong>${esc(d.campo)}:</strong> ${esc(d.valor)}</li>`).join('')}</ul></details>` : ''}
+          </div>`)
+          .join('')
+      : '<p class="vazio">Nenhum registro.</p>';
+  } catch (e) {
+    console.error(e);
+    corpo.innerHTML = '<p class="vazio">Não foi possível carregar o histórico (verifique a internet).</p>';
+  }
+}
+
+// ---------------- Inicialização ----------------
+async function iniciar() {
+  limparAreaImpressao();
+  montarPassos();
+  const id = params.get('i');
+  if (id) await iniciarIncidente(id);
+  else if (params.has('local')) {
+    await iniciarLocal();
+    let inicial = 0;
+    try { inicial = Number(sessionStorage.getItem('sci201-passo')) || 0; } catch { /* sem armazenamento */ }
+    irPara(inicial);
+  } else await iniciarInicio();
 }
 iniciar();
 

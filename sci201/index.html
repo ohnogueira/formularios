@@ -16,17 +16,34 @@
     <div class="topo-linha">
       <h1>SCI-201 · Briefing do Incidente<small>Preenchimento do formulário</small></h1>
       <button class="btn pequeno oculto" id="btn-instalar" type="button">Instalar app</button>
-      <button class="btn pequeno" id="btn-topo-pdf" type="button" title="Salvar/exportar como PDF (a qualquer momento)">PDF</button>
-      <button class="btn pequeno" id="btn-topo-imprimir" type="button" title="Imprimir o formulário (a qualquer momento)">Imprimir</button>
+      <button class="btn pequeno so-form" id="btn-inicio" type="button" title="Voltar à tela inicial">Início</button>
+      <button class="btn pequeno so-form" id="btn-topo-pdf" type="button" title="Salvar/exportar como PDF (a qualquer momento)">PDF</button>
+      <button class="btn pequeno so-form" id="btn-topo-imprimir" type="button" title="Imprimir o formulário (a qualquer momento)">Imprimir</button>
       <button class="btn pequeno" id="btn-guia" type="button">Guia</button>
     </div>
-    <nav class="passos" id="passos" aria-label="Etapas do formulário"></nav>
+    <nav class="passos so-form" id="passos" aria-label="Etapas do formulário"></nav>
   </header>
   <div class="aviso-topo oculto" id="aviso-atualizacao">
     Nova versão disponível. <button class="btn pequeno" id="btn-atualizar" type="button">Atualizar</button>
   </div>
 
+  <div class="barra-modo so-form oculto" id="barra-modo" role="region" aria-label="Situação do formulário"></div>
+
   <main id="conteudo">
+    <!-- ===== Tela inicial ===== -->
+    <section class="tela-inicio oculto" id="tela-inicio">
+      <div class="cartao">
+        <h2><span class="titulo">Incidente compartilhado</span></h2>
+        <p class="dica">Um único SCI-201 por incidente, atualizado durante a emergência. O Comandante do Incidente e o Líder de Documentação editam (login com conta Google). Qualquer pessoa com o link do incidente consulta, imprime e gera o PDF, sem login.</p>
+        <div id="inicio-nuvem"></div>
+      </div>
+      <div class="cartao">
+        <h2><span class="titulo">Formulário local</span></h2>
+        <p class="dica">Preenchimento somente neste aparelho, sem internet e sem login. Pode ser transformado em incidente compartilhado depois.</p>
+        <button class="btn" type="button" id="btn-abrir-local">Abrir formulário local</button>
+      </div>
+    </section>
+
     <!-- ===== Etapa 1: Identificação ===== -->
     <section class="passo" data-passo="identificacao" data-titulo="1. Identificação">
       <div class="cartao">
@@ -43,7 +60,7 @@
         <div class="linha-dh">
           <label class="campo"><span>Data</span><input type="date" data-bind="incidente.data"></label>
           <label class="campo"><span>Hora</span><input type="time" data-bind="incidente.hora"></label>
-          <button class="btn campo" type="button" data-agora="incidente">Agora</button>
+          <button class="btn campo so-edicao" type="button" data-agora="incidente">Agora</button>
         </div>
       </div>
       <div class="cartao">
@@ -56,12 +73,12 @@
         <div class="linha-dh">
           <label class="campo"><span>Data</span><input type="date" data-bind="preparadoPor.data"></label>
           <label class="campo"><span>Hora</span><input type="time" data-bind="preparadoPor.hora"></label>
-          <button class="btn campo" type="button" data-agora="preparadoPor">Agora</button>
+          <button class="btn campo so-edicao" type="button" data-agora="preparadoPor">Agora</button>
         </div>
         <div class="rotulo">Assinatura</div>
         <div class="assinatura">
           <canvas class="tela-desenho" id="tela-assinatura" width="900" height="300" aria-label="Área para assinar com o dedo ou o mouse"></canvas>
-          <div class="acoes-linha">
+          <div class="acoes-linha so-edicao">
             <button class="btn pequeno" type="button" id="assinatura-desfazer">Desfazer</button>
             <button class="btn pequeno perigo" type="button" id="assinatura-limpar">Limpar assinatura</button>
           </div>
@@ -75,7 +92,7 @@
       <div class="cartao">
         <h2><span class="num">4</span><span class="titulo">Mapa / Croquis</span><button class="ajuda" type="button" data-campo="4" aria-label="Como preencher o campo 4">?</button></h2>
         <p class="dica">Incluir esboço, mostrando a área total das operações, o local/área do incidente impactado e ameaçado, outras áreas resultados de sobrevoo, trajetórias, linhas costeiras impactadas ou outros gráficos que retratam o status situacional e a localização geográfica dos recursos designados e/ou em empregos.</p>
-        <div class="acoes-linha" style="margin:0 0 10px">
+        <div class="acoes-linha so-edicao" style="margin:0 0 10px">
           <label class="btn azul">
             Anexar foto ou imagem
             <input type="file" accept="image/*" id="croqui-arquivo" class="sr">
@@ -83,7 +100,7 @@
           <button class="btn" type="button" id="croqui-girar">Girar 90°</button>
           <button class="btn perigo" type="button" id="croqui-remover-imagem">Remover imagem</button>
         </div>
-        <div class="ferramentas" id="croqui-ferramentas" role="toolbar" aria-label="Ferramentas de desenho">
+        <div class="ferramentas so-edicao" id="croqui-ferramentas" role="toolbar" aria-label="Ferramentas de desenho">
           <span class="rotulo" style="margin:0">Desenhar:</span>
           <button class="cor" type="button" data-cor="#111111" style="background:#111111" aria-label="Preto"></button>
           <button class="cor" type="button" data-cor="#d32f2f" style="background:#d32f2f" aria-label="Vermelho"></button>
@@ -123,7 +140,7 @@
       <div class="cartao">
         <h2><span class="num">8</span><span class="titulo">Ações, estratégias e táticas atuais e planejadas</span><button class="ajuda" type="button" data-campo="8" aria-label="Como preencher o campo 8">?</button></h2>
         <div id="lista-acoes"></div>
-        <div class="acoes-linha">
+        <div class="acoes-linha so-edicao">
           <button class="btn azul" type="button" id="add-acao">+ Adicionar ação</button>
           <button class="btn" type="button" id="ordenar-acoes">Ordenar por data/hora</button>
         </div>
@@ -140,7 +157,7 @@
           <legend>Comandante(s) do Incidente</legend>
           <label class="check"><input type="checkbox" id="org-unificado"> Comando Unificado ativado (divide a caixa do Comandante do Incidente)</label>
           <div id="lista-comandantes"></div>
-          <button class="btn pequeno azul oculto" type="button" id="add-comandante">+ Adicionar Comandante</button>
+          <button class="btn pequeno azul oculto so-edicao" type="button" id="add-comandante">+ Adicionar Comandante</button>
         </fieldset>
 
         <fieldset>
@@ -166,7 +183,7 @@
           <legend>Demais estruturas</legend>
           <p class="dica" style="margin-top:0">Substitutos, Assistentes, Representantes das Agências, Unidades, Divisões etc.</p>
           <div id="lista-extras"></div>
-          <button class="btn pequeno azul" type="button" id="add-extra">+ Adicionar cargo/função</button>
+          <button class="btn pequeno azul so-edicao" type="button" id="add-extra">+ Adicionar cargo/função</button>
         </fieldset>
 
         <div class="rotulo">Pré-visualização do organograma</div>
@@ -179,7 +196,7 @@
       <div class="cartao">
         <h2><span class="num">10</span><span class="titulo">Resumo dos Recursos</span><button class="ajuda" type="button" data-campo="10" aria-label="Como preencher o campo 10">?</button></h2>
         <div id="lista-recursos"></div>
-        <div class="acoes-linha">
+        <div class="acoes-linha so-edicao">
           <button class="btn azul" type="button" id="add-recurso">+ Adicionar recurso</button>
         </div>
       </div>
@@ -197,18 +214,23 @@
         </div>
         <p class="dica" style="margin-top:10px">Os botões “PDF” e “Imprimir” também ficam no topo da tela, disponíveis em qualquer etapa, mesmo com o formulário incompleto (campos vazios saem em branco). O PDF segue o layout de 4 páginas do modelo SCI-201. Páginas adicionais são criadas automaticamente quando necessário.</p>
       </div>
-      <div class="cartao">
-        <h2><span class="titulo">Transferência de comando / continuar depois</span></h2>
-        <p class="dica">Salve o arquivo do formulário (.json) e envie ao próximo Comandante. Ele abre o arquivo neste mesmo app e continua o preenchimento.</p>
+      <div class="cartao" id="cartao-arquivo">
+        <h2><span class="titulo">Arquivo do formulário (.json)</span></h2>
+        <p class="dica">Cópia de segurança do formulário. Pode ser reaberta neste app (no formulário local ou importada para um incidente compartilhado).</p>
         <div class="acoes-linha">
           <button class="btn" type="button" id="btn-salvar-arquivo">Salvar arquivo do formulário</button>
-          <label class="btn">
+          <label class="btn so-edicao">
             Abrir arquivo do formulário
             <input type="file" accept=".json,application/json" id="abrir-arquivo" class="sr">
           </label>
         </div>
       </div>
-      <div class="cartao">
+      <div class="cartao so-local">
+        <h2><span class="titulo">Compartilhar com a equipe</span></h2>
+        <p class="dica">Transforma este formulário local em um incidente compartilhado: você continua editando, autoriza o Líder de Documentação e envia o link de consulta à estrutura de resposta.</p>
+        <button class="btn azul" type="button" id="btn-local-para-nuvem">Criar incidente compartilhado com estes dados</button>
+      </div>
+      <div class="cartao so-local">
         <h2><span class="titulo">Novo formulário</span></h2>
         <p class="dica">Os dados ficam salvos apenas neste aparelho/navegador. Ao iniciar um novo formulário, o atual é apagado. Salve o arquivo ou o PDF antes.</p>
         <button class="btn perigo" type="button" id="btn-novo">Iniciar novo formulário</button>

@@ -1,6 +1,6 @@
 // Service worker: guarda os arquivos do app no aparelho para funcionar sem internet.
 // Ao alterar qualquer arquivo do app, incremente VERSAO para que os aparelhos recebam a atualização.
-const VERSAO = 'sci201-v2';
+const VERSAO = 'sci201-v3';
 const ARQUIVOS = [
   './',
   'index.html',
@@ -13,6 +13,10 @@ const ARQUIVOS = [
   'js/org.js',
   'js/pdf.js',
   'js/imprimir.js',
+  'js/sync.js',
+  'js/nuvem.js',
+  'js/firebase-config.js',
+  'vendor/firebase/firebase.mjs',
   'vendor/pdfjs/pdf.min.mjs',
   'vendor/pdfjs/pdf.worker.min.mjs',
   'vendor/pdfjs/standard_fonts/LiberationSans-Regular.ttf',

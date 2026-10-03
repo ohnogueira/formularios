@@ -11,6 +11,7 @@ export class Pad {
     this.fundo = fundo; // HTMLImageElement | null
     this.aoMudar = aoMudar;
     this.atual = null;
+    this.ativo = true; // falso no modo somente leitura
     this._ligarEventos();
     this.redesenhar();
   }
@@ -19,13 +20,13 @@ export class Pad {
     const r = this.canvas.getBoundingClientRect();
     const x = (ev.clientX - r.left) / r.width;
     const y = (ev.clientY - r.top) / r.height;
-    return [Math.round(Math.min(1, Math.max(0, x)) * 10000) / 10000, Math.round(Math.min(1, Math.max(0, y)) * 10000) / 10000];
+    return [Math.round(Math.min(1, Math.max(0, x)) * 1000) / 1000, Math.round(Math.min(1, Math.max(0, y)) * 1000) / 1000];
   }
 
   _ligarEventos() {
     const c = this.canvas;
     c.addEventListener('pointerdown', (ev) => {
-      if (ev.button !== undefined && ev.button > 0) return;
+      if (!this.ativo || (ev.button !== undefined && ev.button > 0)) return;
       ev.preventDefault();
       c.setPointerCapture(ev.pointerId);
       this.atual = { cor: this.cor, esp: this.espessura, pts: [this._ponto(ev)] };
@@ -36,7 +37,12 @@ export class Pad {
       if (!this.atual) return;
       ev.preventDefault();
       const eventos = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
-      for (const e of eventos) this.atual.pts.push(this._ponto(e));
+      for (const e of eventos) {
+        const p = this._ponto(e);
+        const u = this.atual.pts[this.atual.pts.length - 1];
+        // Descarta pontos muito próximos (reduz o tamanho dos dados sem perda visível).
+        if (Math.abs(p[0] - u[0]) + Math.abs(p[1] - u[1]) >= 0.002) this.atual.pts.push(p);
+      }
       this.redesenhar();
     });
     const fim = () => {
@@ -124,6 +130,7 @@ export function carregarImagem(src) {
 }
 
 // Reduz a imagem enviada para no máximo `max` px no maior lado (economiza espaço e deixa o PDF leve).
+// O resultado fica abaixo de ~700 KB para caber num documento do modo compartilhado (limite de 1 MiB).
 export async function prepararImagem(arquivo, max = 1600) {
   const url = URL.createObjectURL(arquivo);
   try {
@@ -138,7 +145,7 @@ export async function prepararImagem(arquivo, max = 1600) {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
-    return { dataURL: c.toDataURL('image/jpeg', 0.85), largura: w, altura: h };
+    return comprimir(c);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -154,14 +161,30 @@ export async function girarImagem(dataURL) {
   ctx.translate(c.width, 0);
   ctx.rotate(Math.PI / 2);
   ctx.drawImage(img, 0, 0);
-  return { dataURL: c.toDataURL('image/jpeg', 0.85), largura: c.width, altura: c.height };
+  return comprimir(c);
+}
+
+const LIMITE_IMAGEM = 700 * 1024;
+function comprimir(canvas) {
+  let c = canvas;
+  for (;;) {
+    for (const q of [0.85, 0.75, 0.65, 0.55]) {
+      const dataURL = c.toDataURL('image/jpeg', q);
+      if (dataURL.length <= LIMITE_IMAGEM) return { dataURL, largura: c.width, altura: c.height };
+    }
+    const menor = document.createElement('canvas');
+    menor.width = Math.round(c.width * 0.8);
+    menor.height = Math.round(c.height * 0.8);
+    menor.getContext('2d').drawImage(c, 0, 0, menor.width, menor.height);
+    c = menor;
+  }
 }
 
 // Rotação horária dos traços normalizados: (x, y) -> (1 - y, x)
 export function girarTracos(tracos, larguraAntiga, larguraNova) {
   const fator = larguraAntiga / larguraNova; // mantém a espessura visual
   for (const t of tracos) {
-    t.pts = t.pts.map(([x, y]) => [Math.round((1 - y) * 10000) / 10000, x]);
+    t.pts = t.pts.map(([x, y]) => [Math.round((1 - y) * 1000) / 1000, x]);
     t.esp = t.esp * fator;
   }
 }

@@ -1,0 +1,62 @@
+rules_version = '2';
+
+// Regras de acesso do SCI-201 (modo compartilhado).
+// - Qualquer pessoa com o link (id do incidente) pode CONSULTAR o formulário, sem login.
+// - Somente editores autorizados (conta Google) podem ALTERAR.
+// - Somente o dono (quem criou o incidente) gerencia editores e encerra/reabre o incidente.
+// - O histórico de alterações só pode ser criado (nunca alterado ou apagado) e só editores o consultam.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function meuEmail() {
+      return request.auth.token.email.lower();
+    }
+    function ehEditor(inc) {
+      return logado() && inc != null && meuEmail() in inc.data.editores;
+    }
+    function ehDono(inc) {
+      return logado() && inc.data.donoUid == request.auth.uid;
+    }
+
+    match /incidentes/{id} {
+      allow get: if true;
+      allow list: if logado() && meuEmail() in resource.data.editores;
+
+      allow create: if logado()
+        && request.resource.data.donoUid == request.auth.uid
+        && request.resource.data.donoEmail == meuEmail()
+        && request.resource.data.editores == [meuEmail()]
+        && request.resource.data.encerrado == false;
+
+      allow update: if ehEditor(resource)
+        && request.resource.data.donoUid == resource.data.donoUid
+        && request.resource.data.donoEmail == resource.data.donoEmail
+        && request.resource.data.editores is list
+        && request.resource.data.editores.size() <= 30
+        && resource.data.donoEmail in request.resource.data.editores
+        && (ehDono(resource)
+            || (request.resource.data.editores == resource.data.editores
+                && request.resource.data.encerrado == resource.data.encerrado
+                && resource.data.encerrado == false));
+
+      allow delete: if false;
+
+      match /anexos/{nome} {
+        allow get: if true;
+        allow create, update: if nome in ['croquiImagem', 'croquiDesenho']
+          && ehEditor(getAfter(/databases/$(database)/documents/incidentes/$(id)));
+        allow delete: if false;
+      }
+
+      match /historico/{registro} {
+        allow read: if ehEditor(get(/databases/$(database)/documents/incidentes/$(id)));
+        allow create: if request.resource.data.uid == request.auth.uid
+          && ehEditor(getAfter(/databases/$(database)/documents/incidentes/$(id)));
+        allow update, delete: if false;
+      }
+    }
+  }
+}
